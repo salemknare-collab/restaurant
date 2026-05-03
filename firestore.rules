@@ -1,0 +1,334 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isEmployee() {
+      return isAdmin() || (isAuthenticated() && 
+             (
+               (request.auth.token.email != null && (
+                 request.auth.token.email.matches('.*@restaurant\\.internal') ||
+                 exists(/databases/$(database)/documents/users/$(request.auth.token.email))
+               )) ||
+               exists(/databases/$(database)/documents/sessions/$(request.auth.uid))
+             ));
+    }
+
+    function getSessionUsername() {
+      return get(/databases/$(database)/documents/sessions/$(request.auth.uid)).data.username;
+    }
+
+    function isSessionAdmin() {
+      return exists(/databases/$(database)/documents/sessions/$(request.auth.uid)) && (
+        (exists(/databases/$(database)/documents/users/$(getSessionUsername())) && get(/databases/$(database)/documents/users/$(getSessionUsername())).data.roleId == 'admin') ||
+        (exists(/databases/$(database)/documents/users/$(getSessionUsername() + '@restaurant.internal')) && get(/databases/$(database)/documents/users/$(getSessionUsername() + '@restaurant.internal')).data.roleId == 'admin')
+      );
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (
+          (request.auth.token.email != null && (
+            (request.auth.token.email == "salem.sam59@gmail.com") ||
+            (request.auth.token.email.matches('.*@restaurant\\.internal')) ||
+            (exists(/databases/$(database)/documents/users/$(request.auth.token.email)) && get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.roleId == 'admin')
+          )) ||
+          isSessionAdmin()
+        );
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidString(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidNumber(field, minVal) {
+      return request.resource.data[field] is number && request.resource.data[field] >= minVal;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidProduct() {
+      return hasRequiredFields(['name', 'price', 'stock']) &&
+             isValidString('name', 1, 100) &&
+             (!('category' in request.resource.data) || request.resource.data.category is string) &&
+             isValidNumber('price', 0) &&
+             request.resource.data.stock is number;
+    }
+
+    function isValidCustomer() {
+      return hasRequiredFields(['name', 'type']) &&
+             isValidString('name', 1, 100) &&
+             request.resource.data.type in ['عميل', 'مورد'];
+    }
+
+    function isValidEmployee() {
+      return hasRequiredFields(['name', 'role', 'salary', 'status']) &&
+             isValidString('name', 1, 100) &&
+             isValidString('role', 1, 50) &&
+             isValidNumber('salary', 0) &&
+             request.resource.data.status in ['نشط', 'إجازة'];
+    }
+
+    function isValidBranch() {
+      return hasRequiredFields(['name', 'status']) &&
+             isValidString('name', 1, 100) &&
+             request.resource.data.status in ['نشط', 'مغلق للصيانة'];
+    }
+
+    function isValidTransaction() {
+      return hasRequiredFields(['type', 'category', 'amount', 'date']) &&
+             request.resource.data.type in ['income', 'expense'] &&
+             isValidString('category', 1, 50) &&
+             isValidNumber('amount', 0);
+    }
+
+    function isValidFinanceAccount() {
+      return hasRequiredFields(['name', 'type', 'balance']) &&
+             isValidString('name', 1, 100) &&
+             request.resource.data.type in ['safe', 'bank'] &&
+             isValidNumber('balance', -999999999);
+    }
+
+    function isValidCosting() {
+      return hasRequiredFields(['product', 'sellingPrice']) &&
+             isValidString('product', 1, 100) &&
+             isValidNumber('sellingPrice', 0);
+    }
+
+    function isValidInvoice() {
+      return hasRequiredFields(['date', 'customer', 'amount', 'status', 'type']) &&
+             isValidString('customer', 1, 100) &&
+             isValidNumber('amount', 0) &&
+             request.resource.data.status in ['مدفوعة', 'معلقة', 'ملغاة'] &&
+             request.resource.data.type in ['مبيعات', 'مشتريات'];
+    }
+
+    function isValidRole() {
+      return hasRequiredFields(['name', 'description', 'permissions']) &&
+             isValidString('name', 1, 100) &&
+             isValidString('description', 0, 500) &&
+             request.resource.data.permissions is list;
+    }
+
+    function isValidCoupon() {
+      return hasRequiredFields(['code', 'type', 'value', 'expiryDate', 'status']) &&
+             isValidString('code', 1, 50) &&
+             request.resource.data.type in ['نسبة مئوية', 'مبلغ ثابت'] &&
+             isValidNumber('value', 0) &&
+             isValidString('expiryDate', 1, 50) &&
+             request.resource.data.status in ['نشط', 'غير نشط'];
+    }
+
+    function isValidPayrollTransaction() {
+      return hasRequiredFields(['employeeId', 'employeeName', 'type', 'date', 'createdAt']) &&
+             isValidString('employeeId', 1, 100) &&
+             isValidString('employeeName', 1, 100) &&
+             request.resource.data.type in ['advance', 'deduction', 'addition', 'absence', 'salary_payment'] &&
+             isValidString('date', 1, 50) &&
+             isValidString('createdAt', 1, 50) &&
+             (request.resource.data.amount is number);
+    }
+
+    function isValidExpenseCategory() {
+      return hasRequiredFields(['name']) &&
+             isValidString('name', 1, 100);
+    }
+
+    function isValidKitchenStation() {
+      return hasRequiredFields(['name']) &&
+             isValidString('name', 1, 100);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /sessions/{sessionId} {
+      allow read: if request.auth.uid == sessionId; // they can read their own session
+      allow create: if isAuthenticated() && request.auth.uid == sessionId &&
+                    hasRequiredFields(['username', 'password']) &&
+                    (
+                      (exists(/databases/$(database)/documents/users/$(request.resource.data.username)) && get(/databases/$(database)/documents/users/$(request.resource.data.username)).data.password == request.resource.data.password) ||
+                      (exists(/databases/$(database)/documents/users/$(request.resource.data.username + '@restaurant.internal')) && get(/databases/$(database)/documents/users/$(request.resource.data.username + '@restaurant.internal')).data.password == request.resource.data.password)
+                    );
+      allow delete: if request.auth.uid == sessionId;  
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isEmployee() || request.auth.token.email == userId);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.token.email == userId);
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isEmployee() && isValidProduct();
+      allow update: if (isEmployee() && isValidProduct()) || 
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']) && 
+                     request.resource.data.stock is number);
+      allow delete: if isEmployee();
+    }
+
+    match /partners/{customerId} {
+      allow read: if isAuthenticated();
+      allow create: if isEmployee() && isValidCustomer();
+      allow update: if isEmployee() && isValidCustomer();
+      allow delete: if isEmployee();
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isEmployee();
+      allow create: if isAdmin() && isValidEmployee();
+      allow update: if isAdmin() && isValidEmployee();
+      allow delete: if isAdmin();
+    }
+
+    match /branches/{branchId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidBranch();
+      allow update: if isAdmin() && isValidBranch();
+      allow delete: if isAdmin();
+    }
+
+    match /product_categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isEmployee();
+    }
+
+    match /dailyTransactions/{transactionId} {
+      allow read: if isEmployee();
+      allow create: if isEmployee() && isValidTransaction();
+      allow update: if isEmployee() && isValidTransaction();
+      allow delete: if isEmployee();
+    }
+
+    match /accounts/{accountId} {
+      allow read: if isEmployee();
+      allow create: if isAdmin() && isValidFinanceAccount();
+      allow update: if isAdmin() && isValidFinanceAccount() || 
+                    (isEmployee() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance']));
+      allow delete: if isAdmin();
+    }
+
+    match /chartAccounts/{accountId} {
+      allow read: if isEmployee();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /costings/{costingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidCosting();
+      allow update: if isAdmin() && isValidCosting();
+      allow delete: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isEmployee();
+      allow create: if isEmployee() && isValidInvoice();
+      allow update: if isEmployee() && isValidInvoice();
+      allow delete: if isEmployee();
+    }
+    
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (isEmployee() || resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (isEmployee() || resource.data.customerId == request.auth.uid);
+    }
+    
+    match /kitchen_orders/{orderId} {
+      allow read: if isEmployee();
+      allow create: if isAuthenticated();
+      allow update, delete: if isEmployee();
+    }
+
+    match /inventory_transfers/{transferId} {
+      allow read: if isEmployee();
+      allow create, update, delete: if isEmployee();
+    }
+
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidRole();
+      allow update: if isAdmin() && isValidRole();
+      allow delete: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidCoupon();
+      allow update: if isAdmin() && isValidCoupon();
+      allow delete: if isAdmin();
+    }
+
+    match /payroll/{transactionId} {
+      allow read: if isEmployee();
+      allow create: if isAdmin() && isValidPayrollTransaction();
+      allow update: if isAdmin() && isValidPayrollTransaction();
+      allow delete: if isAdmin();
+    }
+
+    match /expense_categories/{categoryId} {
+      allow read: if isEmployee();
+      allow create: if isEmployee() && isValidExpenseCategory();
+      allow update: if isEmployee() && isValidExpenseCategory();
+      allow delete: if isEmployee();
+    }
+
+    match /income_categories/{categoryId} {
+      allow read: if isEmployee();
+      allow create: if isEmployee() && isValidExpenseCategory();
+      allow update: if isEmployee() && isValidExpenseCategory();
+      allow delete: if isEmployee();
+    }
+
+    match /kitchen_stations/{stationId} {
+      allow read: if isEmployee();
+      allow create: if isAdmin() && isValidKitchenStation();
+      allow update: if isAdmin() && isValidKitchenStation();
+      allow delete: if isAdmin();
+    }
+    match /raw_materials/{materialId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isEmployee();
+      allow update: if isEmployee() || 
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']) && 
+                     request.resource.data.stock is number);
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isEmployee();
+      allow create, update, delete: if isEmployee();
+    }
+
+    match /stock_movements/{movementId} {
+      allow read: if isEmployee();
+      allow create: if isAuthenticated();
+      allow update, delete: if isEmployee();
+    }
+
+    match /measurement_units/{unitId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isEmployee();
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Restaurant POS System",
+  "description": "A comprehensive restaurant management system with POS, Kitchen Display, Customer App, and Admin Dashboard.",
+  "requestFramePermissions": ["geolocation"]
+}

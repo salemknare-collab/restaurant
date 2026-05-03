@@ -1,0 +1,216 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A product in the inventory.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "cost": { "type": "number" },
+        "stock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "status": { "type": "string", "enum": ["متوفر", "قليل", "نفذ"] },
+        "branchId": { "type": "string", "description": "The ID of the branch this product belongs to" }
+      },
+      "required": ["name", "category", "price", "stock", "branchId"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "A customer or supplier.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "type": { "type": "string", "enum": ["عميل", "مورد"] },
+        "totalOrders": { "type": "number" },
+        "totalSpent": { "type": "number" }
+      },
+      "required": ["name", "type"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "An employee of the restaurant.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "salary": { "type": "number" },
+        "status": { "type": "string", "enum": ["نشط", "إجازة"] },
+        "joinDate": { "type": "string" }
+      },
+      "required": ["name", "role", "salary", "status"]
+    },
+    "Branch": {
+      "title": "Branch",
+      "description": "A branch of the restaurant.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "phone": { "type": "string" },
+        "manager": { "type": "string" },
+        "status": { "type": "string", "enum": ["نشط", "مغلق للصيانة"] },
+        "employees": { "type": "number" }
+      },
+      "required": ["name", "status"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "reference": { "type": "string" }
+      },
+      "required": ["type", "category", "amount", "date"]
+    },
+    "FinanceAccount": {
+      "title": "FinanceAccount",
+      "description": "A finance account (safe or bank).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["safe", "bank"] },
+        "balance": { "type": "number" },
+        "lastUpdate": { "type": "string" },
+        "accountNumber": { "type": "string" }
+      },
+      "required": ["name", "type", "balance"]
+    },
+    "Costing": {
+      "title": "Costing",
+      "description": "Costing details for a product.",
+      "type": "object",
+      "properties": {
+        "product": { "type": "string" },
+        "category": { "type": "string" },
+        "ingredientsCost": { "type": "number" },
+        "packagingCost": { "type": "number" },
+        "laborCost": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "margin": { "type": "number" }
+      },
+      "required": ["product", "sellingPrice"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "An invoice.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "customer": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["مدفوعة", "معلقة", "ملغاة"] },
+        "type": { "type": "string", "enum": ["مبيعات", "مشتريات"] }
+      },
+      "required": ["date", "customer", "amount", "status", "type"]
+    },
+    "Role": {
+      "title": "Role",
+      "description": "A user role with specific permissions.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "isSystem": { "type": "boolean" }
+      },
+      "required": ["name", "permissions"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "A discount coupon.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "type": { "type": "string", "enum": ["نسبة مئوية", "مبلغ ثابت"] },
+        "value": { "type": "number" },
+        "expiryDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["نشط", "غير نشط"] }
+      },
+      "required": ["code", "type", "value", "expiryDate", "status"]
+    },
+    "EmployeeTransaction": {
+      "title": "EmployeeTransaction",
+      "description": "A financial transaction for an employee.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "type": { "type": "string", "enum": ["advance", "deduction", "addition", "absence", "salary_payment"] },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["employeeId", "employeeName", "type", "date", "createdAt"]
+    },
+    "ExpenseCategory": {
+      "title": "ExpenseCategory",
+      "description": "A category for expenses.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Products in the inventory."
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customers and suppliers."
+    },
+    "/employees/{employeeId}": {
+      "schema": { "$ref": "#/entities/Employee" },
+      "description": "Employees."
+    },
+    "/branches/{branchId}": {
+      "schema": { "$ref": "#/entities/Branch" },
+      "description": "Branches."
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Financial transactions."
+    },
+    "/finance_accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/FinanceAccount" },
+      "description": "Finance accounts."
+    },
+    "/costings/{costingId}": {
+      "schema": { "$ref": "#/entities/Costing" },
+      "description": "Costings."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Invoices."
+    },
+    "/roles/{roleId}": {
+      "schema": { "$ref": "#/entities/Role" },
+      "description": "User roles."
+    },
+    "/coupons/{couponId}": {
+      "schema": { "$ref": "#/entities/Coupon" },
+      "description": "Discount coupons."
+    },
+    "/employee_transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/EmployeeTransaction" },
+      "description": "Employee transactions."
+    },
+    "/expense_categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/ExpenseCategory" },
+      "description": "Expense categories."
+    }
+  }
+}
