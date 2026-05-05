@@ -221,6 +221,7 @@ export default function Inventory() {
         branchId: product.branchId || "",
         ingredients: product.ingredients || [],
         isAvailable: product.isAvailable !== false,
+        image: product.image || "",
       });
     } else {
       setEditingProduct(null);
@@ -235,6 +236,7 @@ export default function Inventory() {
         branchId: "",
         ingredients: [],
         isAvailable: true,
+        image: "",
       });
     }
     setImageFile(null);
