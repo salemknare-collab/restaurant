@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUserAuth } from '../hooks/useUserAuth';
 
-import { Search, Filter, Eye, MoreVertical, Download, X, CheckCircle, Clock, XCircle, Trash2 } from 'lucide-react';
+import { Search, Filter, Eye, MoreVertical, Download, X, CheckCircle, Clock, XCircle, Trash2, Utensils } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { useFormatCurrency } from '../hooks/useFormatCurrency';
 import { db } from '../firebase';
