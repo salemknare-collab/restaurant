@@ -287,8 +287,11 @@ export default function Inventory() {
         await addDoc(collection(db, "products"), finalData);
       }
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error saving product:", error);
       handleFirestoreError(error, OperationType.WRITE, "products");
+      setValidationError(`حدث خطأ أثناء الحفظ: ${error.message || 'خطأ غير معروف'}`);
+      setTimeout(() => setValidationError(null), 5000);
     } finally {
       setIsUploading(false);
     }

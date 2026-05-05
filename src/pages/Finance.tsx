@@ -694,6 +694,7 @@ export default function Finance() {
                     const timestamp = new Date().toISOString();
                     const dateStr = timestamp.split('T')[0];
                     
+                    const batch = writeBatch(db);
                     const driverRef = doc(db, 'users', receiveCashData.driverId);
                     const driverAcc = drivers.find(d => d.id === receiveCashData.driverId);
                     batch.update(driverRef, { cashOnHand: Math.max(0, (driverAcc?.cashOnHand || 0) - receiveCashData.amount) });
