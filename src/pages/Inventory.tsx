@@ -12,8 +12,10 @@ import {
   Store,
   Settings,
   AlertTriangle,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
-import { db } from "../firebase";
+import { db, storage } from "../firebase";
 import {
   collection,
   onSnapshot,
@@ -24,6 +26,8 @@ import {
   writeBatch,
   increment,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 import { handleFirestoreError, OperationType } from "../lib/firestoreUtils";
 import { ExportButtons } from "../components/ExportButtons";
 import { exportToExcel, printTable } from "../lib/exportUtils";
@@ -76,7 +80,9 @@ export default function Inventory() {
     branchId: "",
     ingredients: [] as any[],
     isAvailable: true,
+    image: "",
   });
+
   const [categoryFormData, setCategoryFormData] = useState({
     name: "",
     kitchenId: "",
@@ -85,6 +91,10 @@ export default function Inventory() {
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [editingKitchen, setEditingKitchen] = useState<any>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
 
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
@@ -227,6 +237,8 @@ export default function Inventory() {
         isAvailable: true,
       });
     }
+    setImageFile(null);
+    setImagePreview(product?.image || null);
     setIsModalOpen(true);
   };
 
@@ -248,18 +260,38 @@ export default function Inventory() {
     }
 
     try {
+
+      setIsUploading(true);
+      let imageUrl = formData.image;
+
+      if (imageFile) {
+        const fileExtension = imageFile.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExtension}`;
+        const storageRef = ref(storage, `product_images/${fileName}`);
+        await uploadBytes(storageRef, imageFile);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      const finalData = {
+        ...formData,
+        image: imageUrl,
+      };
+
       if (editingProduct) {
-        await setDoc(doc(db, "products", editingProduct.id), formData, {
+        await setDoc(doc(db, "products", editingProduct.id), finalData, {
           merge: true,
         });
       } else {
-        await addDoc(collection(db, "products"), formData);
+        await addDoc(collection(db, "products"), finalData);
       }
       setIsModalOpen(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "products");
+    } finally {
+      setIsUploading(false);
     }
   };
+
 
   const addIngredient = () => {
     setFormData((prev) => ({
@@ -714,7 +746,40 @@ export default function Inventory() {
               </button>
             </div>
             <div className="p-4 space-y-4 overflow-y-auto pos-scroll">
+              {/* Image Upload Section */}
+              <div className="flex flex-col items-center gap-3 p-4 bg-surface-hover/30 rounded-xl border-2 border-dashed border-border hover:border-primary-500/50 transition-colors">
+                <div className="relative w-24 h-24 rounded-lg bg-background overflow-hidden border border-border group">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <ImageIcon className="w-8 h-8" />
+                    </div>
+                  )}
+                  <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Upload className="w-6 h-6 text-white" />
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImageFile(file);
+                          setImagePreview(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-medium text-foreground">صورة المنتج</p>
+                  <p className="text-[10px] text-muted">يفضل صورة مربعة بحجم أقل من 1MB</p>
+                </div>
+              </div>
+
               <div>
+
                 <label className="block text-sm font-medium text-muted mb-1">
                   الفرع
                 </label>
@@ -971,10 +1036,19 @@ export default function Inventory() {
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-lg transition-colors"
+                disabled={isUploading}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                حفظ
+                {isUploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>جاري الحفظ...</span>
+                  </>
+                ) : (
+                  "حفظ"
+                )}
               </button>
+
             </div>
           </div>
         </div>

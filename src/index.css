@@ -85,3 +85,50 @@
   scrollbar-width: none;
 }
 
+@layer components {
+  .glass {
+    @apply backdrop-blur-md bg-surface/60 border border-white/10 shadow-xl;
+  }
+  
+  .glass-dark {
+    @apply backdrop-blur-md bg-black/40 border border-white/5 shadow-2xl;
+  }
+
+  .glow-primary {
+    @apply shadow-[0_0_20px_rgba(99,102,241,0.2)];
+  }
+
+  .glow-emerald {
+    @apply shadow-[0_0_20px_rgba(16,185,129,0.2)];
+  }
+
+  .auto-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  .delay-100 { animation-delay: 0.1s; }
+  .delay-200 { animation-delay: 0.2s; }
+  .delay-300 { animation-delay: 0.3s; }
+  .delay-500 { animation-delay: 0.5s; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.rotate-y-12 {
+  transform: rotateY(12deg);
+}
+

@@ -10,6 +10,7 @@ import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 
 interface OrderItem {
   name: string;
+  image?: string;
   quantity: number;
   notes?: string;
   kitchenId?: string;
@@ -263,12 +264,12 @@ export default function Kitchen() {
         
         {/* Column 1: New Orders */}
         <div className="flex-1 flex flex-col bg-surface border border-border rounded-2xl overflow-hidden">
-          <div className="h-12 bg-blue-500/10 border-b border-blue-500/20 flex items-center justify-between px-4 shrink-0">
+          <div className="h-12 glass border-b border-blue-500/20 flex items-center justify-between px-4 shrink-0">
             <h2 className="font-bold text-blue-400 text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
               <span>طلبات جديدة</span>
             </h2>
-            <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{newOrders.length}</span>
+            <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full glow-primary">{newOrders.length}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 pos-scroll">
             {newOrders.map(order => (
@@ -279,12 +280,12 @@ export default function Kitchen() {
 
         {/* Column 2: Preparing */}
         <div className="flex-1 flex flex-col bg-surface border border-border rounded-2xl overflow-hidden">
-          <div className="h-12 bg-orange-500/10 border-b border-orange-500/20 flex items-center justify-between px-4 shrink-0">
+          <div className="h-12 glass border-b border-orange-500/20 flex items-center justify-between px-4 shrink-0">
             <h2 className="font-bold text-orange-400 text-sm flex items-center gap-2">
               <ChefHat className="w-4 h-4" />
               <span>قيد التحضير</span>
             </h2>
-            <span className="bg-orange-500 text-foreground text-xs font-bold px-2 py-0.5 rounded-full">{preparingOrders.length}</span>
+            <span className="bg-orange-500 text-foreground text-xs font-bold px-2 py-0.5 rounded-full glow-primary">{preparingOrders.length}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 pos-scroll">
             {preparingOrders.map(order => (
@@ -295,12 +296,12 @@ export default function Kitchen() {
 
         {/* Column 3: Ready */}
         <div className="flex-1 flex flex-col bg-surface border border-border rounded-2xl overflow-hidden">
-          <div className="h-12 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between px-4 shrink-0">
+          <div className="h-12 glass border-b border-emerald-500/20 flex items-center justify-between px-4 shrink-0">
             <h2 className="font-bold text-emerald-400 text-sm flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
               <span>جاهز للتسليم</span>
             </h2>
-            <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{readyOrders.length}</span>
+            <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full glow-emerald">{readyOrders.length}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 pos-scroll">
             {readyOrders.map(order => (
@@ -347,13 +348,9 @@ export default function Kitchen() {
                   return (
                     <div key={product.id} className={`flex items-center justify-between p-3 rounded-xl border ${isAvailable ? 'bg-surface border-border' : 'bg-red-500/5 border-red-500/20'}`}>
                       <div className="flex items-center gap-3">
-                        {product.image ? (
-                          <img src={product.image} alt={product.name} className={`w-10 h-10 rounded-lg object-cover ${!isAvailable && 'grayscale opacity-50'}`} />
-                        ) : (
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isAvailable ? 'bg-surface-hover text-muted-foreground' : 'bg-red-500/10 text-red-400'}`}>
-                            <Utensils className="w-5 h-5" />
-                          </div>
-                        )}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isAvailable ? 'bg-surface-hover text-primary-400' : 'bg-red-500/10 text-red-400'}`}>
+                          <Utensils className="w-5 h-5" />
+                        </div>
                         <div>
                           <p className={`font-bold text-sm ${!isAvailable && 'text-muted-foreground line-through'}`}>{product.name}</p>
                           <p className="text-xs text-muted">{product.category || 'بدون تصنيف'}</p>
@@ -495,10 +492,10 @@ const OrderCard: React.FC<{
   if (displayItems.length === 0) return null;
 
   return (
-    <div className={`bg-background border rounded-xl p-3 shadow-sm transition-colors ${
+    <div className={`glass rounded-xl p-4 shadow-lg transition-all hover:scale-[1.01] auto-fade-in-up ${
       isLate 
-        ? 'border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
-        : 'border-border'
+        ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] bg-red-500/5' 
+        : 'border-white/10'
     }`}>
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
         <div className="flex items-center gap-2">
@@ -536,14 +533,21 @@ const OrderCard: React.FC<{
         </p>
         <ul className="space-y-2">
           {displayItems.map((item, idx) => (
-            <li key={idx} className="flex items-start gap-2 text-sm">
-              <span className="font-bold text-foreground bg-surface-hover w-5 h-5 flex items-center justify-center rounded text-xs shrink-0">
-                {item.quantity}
-              </span>
-              <div>
-                <span className="text-slate-200">{item.name}</span>
+            <li key={idx} className="flex flex-col text-sm bg-white/5 p-3 rounded-xl border border-white/5">
+              <div className="flex-1">
+                <div className="flex justify-between items-start gap-4">
+                  <span className="text-white font-bold text-xl leading-tight">{item.name}</span>
+                  <span className="font-black text-white bg-primary-600 w-12 h-12 min-w-[3rem] flex items-center justify-center rounded-xl text-2xl shadow-lg shadow-primary-500/30 glow-primary">
+                    {item.quantity}
+                  </span>
+                </div>
                 {item.notes && (
-                  <p className="text-[10px] text-red-400 mt-0.5">ملاحظة: {item.notes}</p>
+                  <div className="mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                    <p className="text-xs text-red-400 flex items-center gap-2 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                      ملاحظة: {item.notes}
+                    </p>
+                  </div>
                 )}
               </div>
             </li>

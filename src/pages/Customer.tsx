@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ShoppingBag, ArrowRight, Plus, Minus, X, User, Phone, MapPin, AlertCircle, Clock, CheckCircle, Trash2, MessageSquare, LogOut, Truck, Utensils, ChevronDown, Star, Navigation, Check, Home } from 'lucide-react';
+import { Search, ShoppingBag, ArrowRight, Plus, Minus, X, User, Phone, MapPin, AlertCircle, Clock, CheckCircle, Trash2, MessageSquare, LogOut, Truck, Utensils, ChevronDown, Star, Navigation, Check, Home, LayoutGrid, StretchVertical, Grid2X2, Moon, Sun } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 import { useFormatCurrency } from '../hooks/useFormatCurrency';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, addDoc, serverTimestamp, writeBatch, doc, increment, query, where } from 'firebase/firestore';
@@ -16,6 +17,7 @@ interface Product {
   status: string;
   branchId?: string;
   isAvailable?: boolean;
+  image?: string;
 }
 
 interface CartItem {
@@ -40,6 +42,7 @@ interface Order {
 
 export default function Customer() {
   const { storeSettings, invoiceSettings } = useSettings();
+  const { theme, toggleTheme } = useTheme();
   const formatCurrency = useFormatCurrency();
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
@@ -68,6 +71,13 @@ export default function Customer() {
   const [myOrders, setMyOrders] = useState<Record<string, Order>>({});
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<'single' | 'double' | 'grid'>(() => {
+    return (localStorage.getItem('customer_display_mode') as any) || 'grid';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('customer_display_mode', displayMode);
+  }, [displayMode]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -332,6 +342,7 @@ export default function Customer() {
         items: cart.map(item => ({
           id: item.product.id,
           name: item.product.name,
+          image: (item.product as any).image || '',
           price: item.product.price,
           quantity: item.quantity,
           notes: item.note || ''
@@ -363,6 +374,7 @@ export default function Customer() {
           const category = categories.find(c => c.name === productCategory);
           return {
             name: item.product.name,
+            image: (item.product as any).image || '',
             quantity: item.quantity,
             notes: item.note || '',
             kitchenId: category?.kitchenId || ''
@@ -478,21 +490,27 @@ export default function Customer() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-primary-500/20 blur-[100px] rounded-full pointer-events-none"></div>
 
           {/* Background Image with Overlay */}
-          <div className="absolute inset-0 z-0 bg-[#050505]">
+          <div className="absolute inset-0 z-0 bg-background">
             <img 
               src="https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=1934&auto=format&fit=crop" 
               alt="Restaurant Background" 
-              className="w-full h-full object-cover opacity-30"
+              className={`w-full h-full object-cover transition-opacity duration-1000 ${theme === 'dark' ? 'opacity-30' : 'opacity-10'}`}
               referrerPolicy="no-referrer"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-transparent to-[#050505]"></div>
+            <div className={`absolute inset-0 bg-gradient-to-t from-background via-background/${theme === 'dark' ? '80' : '60'} to-transparent`}></div>
+            <div className={`absolute inset-0 bg-gradient-to-r from-background via-transparent to-background`}></div>
           </div>
 
-          <header className="px-6 py-6 flex justify-start relative z-10 w-full max-w-sm mx-auto">
+          <header className="px-6 py-6 flex justify-between items-center relative z-10 w-full max-w-sm mx-auto">
             <button onClick={() => navigate('/login')} className="text-primary-500 font-bold text-lg cursor-pointer hover:text-primary-400 transition-colors flex items-center gap-2">
               دخول الموظفين
               <ArrowRight className="w-5 h-5 rotate-180" />
+            </button>
+            <button 
+              onClick={toggleTheme}
+              className="p-2 text-muted hover:text-foreground bg-surface/20 backdrop-blur-md rounded-xl transition-colors border border-white/10"
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5" />}
             </button>
           </header>
 
@@ -503,47 +521,52 @@ export default function Customer() {
                   <img src={invoiceSettings.logoUrl} alt={storeSettings?.nameAr || 'Logo'} className="w-full h-full object-contain" />
                 </div>
               ) : (
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-6 shadow-2xl">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface/50 backdrop-blur-xl border border-border/50 mb-6 shadow-2xl">
                   <span className="text-primary-500 font-bold text-xl">{storeSettings?.nameAr || 'المطعم'}</span>
                 </div>
               )}
             </div>
 
             <div className="text-center mb-12 auto-fade-in-up delay-100">
-              <h1 className="text-4xl font-bold text-white mb-3 tracking-tight drop-shadow-sm">مرحباً بك</h1>
-              <p className="text-lg text-gray-400">{storeSettings?.nameAr || 'مطعم الكناري'}</p>
+              <h1 className="text-5xl font-black text-foreground mb-4 tracking-tighter drop-shadow-md bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent italic">
+                {storeSettings?.nameAr || 'مطعم الكناري'}
+              </h1>
+              <div className="h-1 w-20 bg-primary-500 mx-auto rounded-full mb-4"></div>
+              <p className="text-xl text-muted font-medium">تجربة تذوق لا تُنسى</p>
             </div>
 
             <button
               onClick={() => setViewMode('login')}
-              className="w-full bg-primary-600 rounded-3xl p-8 relative overflow-hidden flex items-center justify-between group hover:scale-[1.02] shadow-lg hover:shadow-2xl hover:-translate-y-1 shadow-primary-500/20 hover:shadow-primary-500/40 transition-all duration-300 auto-fade-in-up delay-200"
+              className="w-full bg-primary-600 rounded-[2.5rem] p-10 relative overflow-hidden flex items-center justify-between group hover:scale-[1.02] active:scale-[0.98] shadow-2xl hover:shadow-primary-500/40 transition-all duration-500 auto-fade-in-up delay-200"
             >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              
               {/* Left Arrow */}
-              <div className="text-white/80 group-hover:-translate-x-2 transition-transform duration-300 relative z-10">
-                <ArrowRight className="w-8 h-8 rotate-180" />
+              <div className="text-white/80 group-hover:-translate-x-3 transition-transform duration-500 relative z-10">
+                <ArrowRight className="w-10 h-10 rotate-180" />
               </div>
 
               {/* Center Text */}
-              <div className="text-right flex-1 pr-6 relative z-10">
-                <div className="text-3xl font-bold text-white mb-2">الدخول</div>
-                <div className="text-3xl font-bold text-white mb-4">كزبون</div>
-                <div className="text-sm text-white/90 font-medium leading-relaxed opacity-90">
-                  تصفح<br />
-                  القائمة<br />
-                  واطلب<br />
-                  مباشرة
+              <div className="text-right flex-1 pr-8 relative z-10">
+                <div className="text-4xl font-black text-white mb-2 leading-none">اطلب الآن</div>
+                <div className="text-lg text-white/80 font-medium mb-6">ابدأ تجربتك المميزة</div>
+                <div className="flex flex-col gap-1 text-sm text-white/90 font-bold opacity-90 border-r-2 border-white/20 pr-4">
+                  <span>تصفح القائمة</span>
+                  <span>اطلب بسرعة</span>
+                  <span>تتبع طلبك</span>
                 </div>
               </div>
 
               {/* Right Icon Area */}
               <div className="relative z-10 shrink-0 self-start">
-                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner">
-                   <User className="w-8 h-8 text-white" />
+                 <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl group-hover:rotate-6 transition-transform duration-500">
+                   <ShoppingBag className="w-10 h-10 text-white" />
                  </div>
               </div>
               
-              {/* Background Glow inside button */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+              {/* Decorative elements */}
+              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary-400/20 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
             </button>
           </main>
         </div>
@@ -553,31 +576,39 @@ export default function Customer() {
     return (
       <div className="min-h-screen flex flex-col relative overflow-hidden font-sans" dir="rtl">
         {/* Background Image with Overlay */}
-        <div className="absolute inset-0 z-0 bg-[#050505]">
+        <div className="absolute inset-0 z-0 bg-background">
           <img 
             src="https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=1934&auto=format&fit=crop" 
             alt="Restaurant Background" 
-            className="w-full h-full object-cover opacity-30"
+            className={`w-full h-full object-cover transition-opacity duration-1000 ${theme === 'dark' ? 'opacity-30' : 'opacity-10'}`}
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-transparent to-[#050505]"></div>
+          <div className={`absolute inset-0 bg-gradient-to-t from-background via-background/${theme === 'dark' ? '80' : '60'} to-transparent`}></div>
+          <div className={`absolute inset-0 bg-gradient-to-r from-background via-transparent to-background`}></div>
         </div>
 
-        <header className="h-16 flex items-center justify-end px-4 sticky top-0 z-20 mt-4 relative w-full max-w-sm mx-auto">
-           <span className="text-white font-medium text-sm ml-2">عند الدخول كزبون</span>
-           <button onClick={() => setViewMode('landing')} className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors">
-             <ArrowRight className="w-5 h-5" />
-           </button>
+        <header className="h-16 flex items-center justify-between px-4 sticky top-0 z-20 mt-4 relative w-full max-w-sm mx-auto">
+           <button 
+              onClick={toggleTheme}
+              className="p-2 text-muted hover:text-foreground bg-surface/20 backdrop-blur-md rounded-xl transition-colors border border-border/50"
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5" />}
+            </button>
+           <div className="flex items-center gap-2">
+             <span className="text-foreground font-medium text-sm">الدخول كزبون</span>
+             <button onClick={() => setViewMode('landing')} className="p-2 text-muted hover:text-foreground rounded-lg transition-colors">
+               <ArrowRight className="w-5 h-5" />
+             </button>
+           </div>
         </header>
 
         <main className="flex-1 p-6 max-w-sm mx-auto w-full flex flex-col justify-center items-center relative z-10 -mt-20">
           <div className="text-center mb-10 w-full">
-            <div className="w-24 h-24 bg-[#022c22] text-[#10b981] rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner border border-[#064e3b]/50">
+            <div className="w-24 h-24 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner border border-emerald-500/20">
               <User className="w-12 h-12" />
             </div>
-            <h2 className="text-3xl font-bold mb-4 text-white">مرحباً بك في تطبيق الطلبات</h2>
-            <p className="text-gray-400 font-medium text-base px-2">
+            <h2 className="text-3xl font-bold mb-4 text-foreground">مرحباً بك في تطبيق الطلبات</h2>
+            <p className="text-muted font-medium text-base px-2">
               الرجاء تسجيل الدخول للمتابعة وطلب وجباتك المفضلة
             </p>
           </div>
@@ -663,47 +694,63 @@ export default function Customer() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans" dir="rtl">
       {/* Header */}
-      <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setSelectedBranch(null)} className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors">
+      <header className="h-20 bg-surface/80 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-6 sticky top-0 z-30">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setSelectedBranch(null)} 
+            className="p-2.5 text-muted hover:text-foreground hover:bg-surface-hover rounded-2xl transition-all duration-300 border border-transparent hover:border-border"
+          >
             <ArrowRight className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="bg-[#10b981] text-foreground p-1.5 rounded-lg">
-              <ShoppingBag className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/20 rotate-3">
+              <Utensils className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-sm">قائمة الطعام</h1>
-              <p className="text-[10px] text-muted">{selectedBranch.name}</p>
+              <h1 className="font-black text-base tracking-tight leading-none mb-1">القائمة المميزة</h1>
+              <p className="text-[10px] text-muted font-bold flex items-center gap-1">
+                <MapPin className="w-2.5 h-2.5" />
+                {selectedBranch.name}
+              </p>
             </div>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={toggleTheme}
+            className="p-2.5 text-muted hover:text-foreground bg-surface-hover/50 rounded-2xl transition-all duration-300 border border-border/30"
+          >
+            {theme === 'dark' ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5" />}
+          </button>
+          
           <button 
             onClick={() => setIsMyOrdersOpen(true)}
-            className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors flex items-center gap-2 relative"
+            className="p-2.5 text-muted hover:text-foreground bg-surface-hover/50 rounded-2xl transition-all duration-300 border border-border/30 relative"
           >
             <Clock className="w-5 h-5" />
             {Object.keys(myOrders).length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-surface animate-bounce">
+                {Object.keys(myOrders).length}
+              </span>
             )}
           </button>
+
           <button 
             onClick={() => setIsCartOpen(true)}
-            className="relative p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-lg transition-colors flex items-center gap-2"
+            className="p-2.5 bg-primary-500 text-white rounded-2xl transition-all duration-300 border border-primary-400 relative shadow-lg shadow-primary-500/20 hover:scale-105 active:scale-95"
           >
             <ShoppingBag className="w-5 h-5" />
             {totalItems > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-primary-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+              <span className="absolute -top-2 -right-2 min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-black flex items-center justify-center px-1 rounded-full border-2 border-surface shadow-md">
                 {totalItems}
               </span>
             )}
           </button>
+
           <button 
             onClick={handleLogout}
-            className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-            title="تسجيل الخروج"
+            className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-2xl transition-all duration-300 border border-transparent hover:border-red-500/20"
           >
             <LogOut className="w-5 h-5" />
           </button>
@@ -712,17 +759,23 @@ export default function Customer() {
 
       <main className="flex-1 p-4 max-w-5xl mx-auto w-full">
         {/* Welcome Banner */}
-        <div className="bg-[#10b981] rounded-xl p-4 mb-6 flex items-center justify-between relative overflow-hidden shadow-lg shadow-emerald-500/20">
+        <div className="glass-dark rounded-3xl p-6 mb-8 flex items-center justify-between relative overflow-hidden shadow-2xl auto-fade-in-up">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#10b981]/20 to-transparent"></div>
           <div className="relative z-10">
-            <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
+            <h2 className="text-2xl font-black text-foreground mb-1 flex items-center gap-2">
               <span>مرحباً بك!</span>
-              <span>👋</span>
+              <span className="animate-bounce">👋</span>
             </h2>
-            <p className="text-emerald-50 text-xs">
-              اختر أطباقك المفضلة وأرسل طلبك — لا حاجة لتسجيل الدخول
+            <p className="text-muted font-bold text-sm">
+              استكشف أشهى المأكولات وأرسل طلبك بلمسة واحدة
             </p>
           </div>
-          <div className="text-4xl opacity-50 relative z-10">🍕</div>
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center text-4xl shadow-inner relative z-10 border border-white/10">
+            🍕
+          </div>
+          
+          {/* Decorative Circle */}
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-[#10b981]/20 rounded-full blur-2xl"></div>
         </div>
 
         {/* Search */}
@@ -737,82 +790,139 @@ export default function Customer() {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         </div>
 
-        {/* Categories */}
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar">
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
-              activeCategory === 'all'
-                ? 'bg-[#10b981] text-foreground'
-                : 'bg-surface text-muted hover:bg-surface-hover hover:text-foreground border border-border'
-            }`}
-          >
-            الكل
-          </button>
-          {categories.map(category => (
+        {/* Categories and Display Mode Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar flex-1">
             <button
-              key={category.id}
-              onClick={() => setActiveCategory(category.id)}
-              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
-                activeCategory === category.id
-                  ? 'bg-[#10b981] text-foreground'
-                  : 'bg-surface text-muted hover:bg-surface-hover hover:text-foreground border border-border'
+              onClick={() => setActiveCategory('all')}
+              className={`px-5 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all duration-300 border ${
+                activeCategory === 'all'
+                  ? 'bg-[#10b981] text-foreground border-[#10b981] glow-emerald shadow-lg'
+                  : 'bg-surface/50 backdrop-blur-md text-muted hover:text-foreground border-border/50 hover:bg-surface'
               }`}
             >
-              {category.name}
+              الكل
             </button>
-          ))}
+            {categories.map(category => (
+              <button
+                key={category.id}
+                onClick={() => setActiveCategory(category.id)}
+                className={`px-5 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all duration-300 border ${
+                  activeCategory === category.id
+                    ? 'bg-[#10b981] text-foreground border-[#10b981] glow-emerald shadow-lg'
+                    : 'bg-surface/50 backdrop-blur-md text-muted hover:text-foreground border-border/50 hover:bg-surface'
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1 bg-surface border border-border rounded-xl p-1 self-start">
+            <button 
+              onClick={() => setDisplayMode('single')}
+              className={`p-2 rounded-lg transition-all ${displayMode === 'single' ? 'bg-[#10b981] text-foreground shadow-sm' : 'text-muted hover:text-foreground'}`}
+              title="عرض فردي"
+            >
+              <StretchVertical className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setDisplayMode('double')}
+              className={`p-2 rounded-lg transition-all ${displayMode === 'double' ? 'bg-[#10b981] text-foreground shadow-sm' : 'text-muted hover:text-foreground'}`}
+              title="عرض ثنائي"
+            >
+              <Grid2X2 className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setDisplayMode('grid')}
+              className={`p-2 rounded-lg transition-all ${displayMode === 'grid' ? 'bg-[#10b981] text-foreground shadow-sm' : 'text-muted hover:text-foreground'}`}
+              title="عرض شبكي"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProducts.map(product => {
+        <div className={`grid gap-6 ${
+          displayMode === 'single' ? 'grid-cols-1 max-w-2xl mx-auto' : 
+          displayMode === 'double' ? 'grid-cols-2' : 
+          'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+        }`}>
+          {filteredProducts.map((product, index) => {
             const cartItem = cart.find(item => item.product.id === product.id);
+            const isSingle = displayMode === 'single';
+            
             return (
-            <div key={product.id} className="bg-surface border border-border rounded-2xl overflow-hidden flex flex-col">
-              <div className="h-32 bg-surface-hover/50 flex items-center justify-center text-5xl">
-                {product.name?.includes('برجر') ? '🍔' : 
-                 product.name?.includes('بيتزا') ? '🍕' : 
-                 product.name?.includes('شاورما') ? '🌯' : 
-                 product.name?.includes('عصير') || product.name?.includes('كولا') ? '🥤' : 
-                 product.name?.includes('سلطة') ? '🥗' : '🍟'}
-              </div>
-              <div className="p-4 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-bold text-sm text-foreground">{product.name}</h3>
-                    <span className="text-xs text-yellow-500 flex items-center gap-1">
-                      ★ 4.8
-                    </span>
+            <div 
+              key={product.id} 
+              style={{ animationDelay: `${index * 50}ms` }}
+              className={`bg-surface/40 backdrop-blur-xl border border-white/5 rounded-[2.5rem] overflow-hidden flex ${isSingle ? 'flex-row h-52' : 'flex-col'} group hover:shadow-2xl hover:shadow-primary-500/10 transition-all duration-500 hover:-translate-y-2 auto-fade-in-up`}
+            >
+              <div className={`relative overflow-hidden ${isSingle ? 'w-48 h-full' : 'aspect-[4/3] w-full'} bg-surface-hover/30`}>
+                {product.image ? (
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center ${isSingle ? 'text-6xl' : 'text-5xl'} bg-gradient-to-br from-surface-hover to-surface`}>
+                    {product.name?.includes('برجر') ? '🍔' : 
+                     product.name?.includes('بيتزا') ? '🍕' : 
+                     product.name?.includes('شاورما') ? '🌯' : 
+                     product.name?.includes('عصير') || product.name?.includes('كولا') ? '🥤' : 
+                     product.name?.includes('سلطة') ? '🥗' : '🍟'}
                   </div>
-                  <p className="text-[10px] text-muted-foreground mb-3">{product.category}</p>
+                )}
+                <div className="absolute top-4 left-4">
+                  <div className="bg-black/30 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full border border-white/20 flex items-center gap-1">
+                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                    <span>4.8</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="font-bold text-primary-400 text-sm">{formatCurrency(product.price)}</span>
+                {isSingle && (
+                   <div className="absolute inset-0 bg-gradient-to-l from-surface via-transparent to-transparent"></div>
+                )}
+              </div>
+
+              <div className={`p-5 flex-1 flex flex-col ${isSingle ? 'justify-center' : 'justify-between'}`}>
+                <div className={isSingle ? 'mb-2' : ''}>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-black text-base text-foreground line-clamp-1 group-hover:text-primary-500 transition-colors">{product.name}</h3>
+                  </div>
+                  <p className="text-xs text-muted font-bold mb-3">{product.category}</p>
+                </div>
+                
+                <div className={`flex items-center justify-between ${isSingle ? 'mt-2' : 'mt-auto'} gap-4`}>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-muted font-bold mb-0.5">السعر</span>
+                    <span className="font-black text-primary-500 text-lg whitespace-nowrap">{formatCurrency(product.price)}</span>
+                  </div>
                   
                   {cartItem ? (
-                    <div className="flex items-center gap-3 bg-surface-hover rounded-lg p-1 border border-border" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-3 bg-surface-hover/80 backdrop-blur-md rounded-2xl p-1.5 border border-border/50" onClick={(e) => e.stopPropagation()}>
                       <button 
                         onClick={() => updateQuantity(product.id, -1)}
-                        className="w-7 h-7 flex items-center justify-center bg-red-500/10 text-red-500 rounded-md transition-colors hover:bg-red-500/20"
+                        className="w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-500 rounded-xl transition-all hover:bg-red-500 hover:text-white"
                       >
-                         {cartItem.quantity === 1 ? <Trash2 className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+                         {cartItem.quantity === 1 ? <Trash2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
                       </button>
-                      <span className="font-bold text-foreground text-sm min-w-[1ch] text-center">{cartItem.quantity}</span>
+                      <span className="font-black text-foreground text-sm min-w-[1.5ch] text-center">{cartItem.quantity}</span>
                       <button 
                         onClick={() => updateQuantity(product.id, 1)}
-                        className="w-7 h-7 flex items-center justify-center bg-primary-500/10 text-primary-500 rounded-md transition-colors hover:bg-primary-500/20"
+                        className="w-8 h-8 flex items-center justify-center bg-primary-500/10 text-primary-500 rounded-xl transition-all hover:bg-primary-500 hover:text-white"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
                     <button 
                       onClick={() => addToCart(product)}
-                      className="bg-[#10b981] hover:bg-[#059669] text-foreground px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                      className="bg-primary-500 hover:bg-primary-600 text-white h-11 px-6 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2 shrink-0 shadow-lg shadow-primary-500/20 active:scale-95"
                     >
-                      <span>أضف</span>
-                      <Plus className="w-3 h-3" />
+                      <span>أضف للسلة</span>
+                      <Plus className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -854,37 +964,41 @@ export default function Customer() {
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.product.id} className="bg-surface border border-border rounded-xl p-3 flex flex-col gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-surface-hover/50 rounded-lg flex items-center justify-center text-2xl">
-                        {item.product.name?.includes('برجر') ? '🍔' : 
-                         item.product.name?.includes('بيتزا') ? '🍕' : 
-                         item.product.name?.includes('شاورما') ? '🌯' : 
-                         item.product.name?.includes('عصير') || item.product.name?.includes('كولا') ? '🥤' : 
-                         item.product.name?.includes('سلطة') ? '🥗' : '🍟'}
+                  <div key={item.product.id} className="bg-surface border border-border rounded-2xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-surface-hover/50 rounded-2xl flex items-center justify-center text-3xl overflow-hidden border border-border/50">
+                        {item.product.image ? (
+                          <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          item.product.name?.includes('برجر') ? '🍔' : 
+                          item.product.name?.includes('بيتزا') ? '🍕' : 
+                          item.product.name?.includes('شاورما') ? '🌯' : 
+                          item.product.name?.includes('عصير') || item.product.name?.includes('كولا') ? '🥤' : 
+                          item.product.name?.includes('سلطة') ? '🥗' : '🍟'
+                        )}
                       </div>
                       <div className="flex-1">
-                        <h4 className="text-xs font-bold text-foreground mb-1">{item.product.name}</h4>
-                        <p className="text-[10px] text-[#10b981] font-bold">{formatCurrency(item.product.price)}</p>
+                        <h4 className="text-sm font-black text-foreground mb-1">{item.product.name}</h4>
+                        <p className="text-xs text-primary-500 font-black">{formatCurrency(item.product.price)}</p>
                       </div>
-                      <div className="flex items-center gap-2 bg-background rounded-lg p-1 border border-border">
-                        <button onClick={() => updateQuantity(item.product.id, 1)} className="w-6 h-6 flex items-center justify-center text-[#10b981] hover:bg-surface-hover rounded">
-                          <Plus className="w-3 h-3" />
+                      <div className="flex items-center gap-3 bg-background rounded-xl p-1 border border-border">
+                        <button onClick={() => updateQuantity(item.product.id, 1)} className="w-7 h-7 flex items-center justify-center text-primary-500 hover:bg-primary-500/10 rounded-lg transition-colors">
+                          <Plus className="w-4 h-4" />
                         </button>
-                        <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.product.id, -1)} className="w-6 h-6 flex items-center justify-center text-red-400 hover:bg-surface-hover rounded">
-                          <Minus className="w-3 h-3" />
+                        <span className="text-sm font-black w-4 text-center">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.product.id, -1)} className="w-7 h-7 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+                          <Minus className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
-                    <div className="relative mt-1">
-                      <MessageSquare className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                    <div className="relative">
+                      <MessageSquare className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                       <input
                         type="text"
                         placeholder="إضافة ملاحظة (اختياري)..."
                         value={item.note || ''}
                         onChange={(e) => updateNote(item.product.id, e.target.value)}
-                        className="w-full pl-2 pr-7 py-1.5 text-[10px] border border-border rounded-lg focus:ring-1 focus:ring-[#10b981] focus:border-transparent outline-none bg-background text-foreground placeholder-slate-500"
+                        className="w-full pl-3 pr-9 py-2 text-xs border border-border rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none bg-background text-foreground transition-all"
                       />
                     </div>
                   </div>
@@ -1064,9 +1178,21 @@ export default function Customer() {
                     </div>
                     <div className="space-y-2 mb-3">
                       {order.items?.map((item: any, idx: number) => (
-                        <div key={idx} className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">{item.quantity}x {item.name}</span>
-                          <span className="text-muted">{formatCurrency(item.price * item.quantity)}</span>
+                        <div key={idx} className="flex items-center gap-3 bg-background/50 rounded-xl p-2 border border-border/40">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-hover/50 shrink-0 border border-border/50">
+                            {item.image ? (
+                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start">
+                              <span className="text-foreground font-bold text-xs truncate">{item.name}</span>
+                              <span className="text-primary-500 font-bold text-xs shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">الكمية: {item.quantity}</div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1237,9 +1363,24 @@ export default function Customer() {
                     
                     <div className="space-y-3 mb-4">
                       {order.items?.map((item: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-center text-foreground">
-                          <span className="font-bold text-sm">{formatCurrency(item.price * item.quantity)}</span>
-                          <span className="text-sm">{item.name} {item.quantity > 1 ? `(${item.quantity})` : ''}</span>
+                        <div key={idx} className="flex items-center gap-3 bg-surface-hover/30 rounded-2xl p-3 border border-border/40">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-background/50 shrink-0 border border-border/50 shadow-sm">
+                            {item.image ? (
+                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center">
+                              <h4 className="font-bold text-sm text-foreground truncate">{item.name}</h4>
+                              <span className="text-primary-500 font-black text-sm">{formatCurrency(item.price * item.quantity)}</span>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                               <span className="text-[10px] text-muted font-medium bg-surface/50 px-2 py-0.5 rounded-full border border-border/50">الكمية: {item.quantity}</span>
+                               <span className="text-[10px] text-muted font-medium">{formatCurrency(item.price)} للقطعة</span>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>

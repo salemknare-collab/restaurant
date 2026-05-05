@@ -381,17 +381,28 @@ export default function Orders() {
               <h4 className="font-bold text-foreground mb-4">العناصر</h4>
               <div className="space-y-3">
                 {selectedOrder.items?.map((item: any, idx: number) => (
-                  <div key={idx} className="bg-background border border-border rounded-xl p-4 flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground bg-surface-hover w-6 h-6 flex items-center justify-center rounded text-xs">
-                          {item.quantity}
-                        </span>
-                        <span className="font-bold text-slate-200">{item.name}</span>
+                  <div key={idx} className="bg-background border border-border rounded-xl p-4 flex justify-between items-center gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-surface-hover shrink-0">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                            <Utensils className="w-6 h-6 opacity-30" />
+                          </div>
+                        )}
                       </div>
-                      {item.notes && (
-                        <p className="text-sm text-red-400 mt-2 pr-8">ملاحظة: {item.notes}</p>
-                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-foreground bg-surface-hover w-6 h-6 flex items-center justify-center rounded text-xs">
+                            {item.quantity}
+                          </span>
+                          <span className="font-bold text-slate-200">{item.name}</span>
+                        </div>
+                        {item.notes && (
+                          <p className="text-sm text-red-400 mt-1 pr-8">ملاحظة: {item.notes}</p>
+                        )}
+                      </div>
                     </div>
                     <span className="font-bold text-primary-400">{formatCurrency(item.price * item.quantity)}</span>
                   </div>

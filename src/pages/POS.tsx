@@ -278,6 +278,7 @@ export default function POS() {
         items: items.map(item => ({
           productId: item.product.id,
           name: item.product.name,
+          image: (item.product as any).image || '',
           price: item.product.price,
           quantity: item.quantity,
           notes: item.note || ''
@@ -325,6 +326,7 @@ export default function POS() {
           const category = categories.find(c => c.name === productCategory);
           return {
             name: item.product.name,
+            image: (item.product as any).image || '',
             quantity: item.quantity,
             notes: item.note || '',
             kitchenId: category?.kitchenId || ''
