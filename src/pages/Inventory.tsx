@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Upload,
   Image as ImageIcon,
+  Link as LinkIcon,
 } from "lucide-react";
 import { db, storage } from "../firebase";
 import {
@@ -267,11 +268,18 @@ export default function Inventory() {
       let imageUrl = formData.image;
 
       if (imageFile) {
-        const fileExtension = imageFile.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExtension}`;
-        const storageRef = ref(storage, `product_images/${fileName}`);
-        await uploadBytes(storageRef, imageFile);
-        imageUrl = await getDownloadURL(storageRef);
+        try {
+          const fileExtension = imageFile.name.split('.').pop();
+          const fileName = `${Date.now()}.${fileExtension}`;
+          const storageRef = ref(storage, `product_images/${fileName}`);
+          await uploadBytes(storageRef, imageFile);
+          imageUrl = await getDownloadURL(storageRef);
+        } catch (storageError: any) {
+          console.error("Storage error:", storageError);
+          setValidationError("فشل رفع الصورة (Firebase Storage غير مفعل). يرجى استخدام 'رابط صورة خارجي' بدلاً من ذلك.");
+          setIsUploading(false);
+          return;
+        }
       }
 
       const finalData = {
@@ -780,6 +788,36 @@ export default function Inventory() {
                 <div className="text-center">
                   <p className="text-xs font-medium text-foreground">صورة المنتج</p>
                   <p className="text-[10px] text-muted">يفضل صورة مربعة بحجم أقل من 1MB</p>
+                </div>
+
+                <div className="w-full flex items-center gap-2 px-2">
+                  <div className="h-px flex-1 bg-border"></div>
+                  <span className="text-[10px] text-muted uppercase">أو استخدم رابط</span>
+                  <div className="h-px flex-1 bg-border"></div>
+                </div>
+
+                <div className="w-full">
+                  <label className="block text-[10px] font-medium text-muted mb-1 px-1">
+                    رابط صورة خارجي (URL)
+                  </label>
+                  <div className="relative group">
+                    <input
+                      type="url"
+                      placeholder="https://example.com/image.jpg"
+                      value={formData.image}
+                      onChange={(e) => {
+                        setFormData({ ...formData, image: e.target.value });
+                        if (!imageFile) {
+                          setImagePreview(e.target.value);
+                        }
+                      }}
+                      className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary-500 pr-8"
+                    />
+                    <LinkIcon className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                  </div>
+                  <p className="text-[9px] text-amber-500/80 mt-1 px-1">
+                    * استخدم هذا الخيار إذا فشل رفع الصورة مباشرة
+                  </p>
                 </div>
               </div>
 
